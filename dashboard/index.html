@@ -491,6 +491,94 @@
     /* ─── RESPONSIVE ─── */
     @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
+  <style>
+    /* Mobile layout fixes for the dashboard */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 100%; }
+      .sidebar {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: 0 !important;
+        bottom: auto !important;
+        padding: 18px 0 12px;
+        box-shadow: none;
+      }
+      .sidebar-logo { padding: 0 16px 16px; }
+      .sidebar-section-title { padding: 12px 16px 6px; }
+      .nav-item { padding: 10px 16px; }
+      .sidebar-footer { padding: 16px; }
+
+      .main {
+        margin-left: 0 !important;
+        padding: 20px 16px 28px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .topbar-right { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .filter-actions { margin-left: 0; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 720px; }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .toast { min-width: 240px; }
+      .modal { width: calc(100% - 32px); }
+    }
+  </style>
+  <style>
+    /* Mobile sidebar toggle (overrides) */
+    .mobile-menu-btn { display: none; }
+    @media (max-width: 900px) {
+      body.no-scroll { overflow: hidden; }
+
+      .sidebar {
+        position: fixed !important;
+        width: 78% !important;
+        max-width: 320px;
+        height: 100vh !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        transform: translateX(-105%);
+        transition: transform 0.25s ease;
+        z-index: 101;
+      }
+      .sidebar.open { transform: translateX(0); }
+
+      .sidebar-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15,23,42,0.55);
+        backdrop-filter: blur(2px);
+        display: none;
+        z-index: 100;
+      }
+      .sidebar-overlay.show { display: block; }
+
+      .mobile-menu-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        border: 1.5px solid var(--slate-200);
+        background: white;
+        color: var(--slate-700);
+        cursor: pointer;
+        font-size: 18px;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -546,6 +634,7 @@
 <!--             DASHBOARD             -->
 <!-- ═══════════════════════════════════ -->
 <div id="dashboard">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -590,6 +679,7 @@
     <!-- TOPBAR -->
     <div class="topbar">
       <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">☰</button>
         <span style="font-size:20px">⚕️</span>
         <div class="topbar-time">
           <strong id="topbarGreeting">Good morning</strong>, Doctor · 
@@ -647,21 +737,7 @@
 // ═════════════════════════════════════
 //           CONFIGURATION
 // ═════════════════════════════════════
-const API_BASE = (() => {
-  const origin = window.location.origin;
-  if (!origin || origin === 'null' || origin.startsWith('file:')) {
-    return 'http://localhost:5000/api';
-  }
-  try {
-    const url = new URL(origin);
-    const host = url.hostname;
-    const port = url.port;
-    if ((host === 'localhost' || host === '127.0.0.1') && port && port !== '5000') {
-      return `${url.protocol}//${host}:5000/api`;
-    }
-  } catch (e) {}
-  return `${origin}/api`;
-})();
+const API_BASE = "https://worker.vinora.workers.dev";
 let authToken = localStorage.getItem('mittel_token');
 let adminData = JSON.parse(localStorage.getItem('mittel_admin') || '{}');
 let modalCallback = null;
@@ -993,7 +1069,7 @@ function renderBookingsTable(appts) {
             <td style="color:var(--slate-500);font-size:13px">${a.email}</td>
             <td style="font-size:13px;color:var(--slate-600);max-width:140px">${a.concern || 'General'}</td>
             <td>${getBadge(a.status)}</td>
-            <td><button class="action-btn btn-view" onclick="markCompleted('${a._id}','${a.name || ''}')">✅ Completed</button></td>
+            <td><button class="action-btn btn-view" onclick="markCompleted('${a.id}','${a.name || ''}')">✅ Completed</button></td>
           </tr>`).join('')}
       </tbody>
     </table>`;
@@ -1130,6 +1206,31 @@ window.addEventListener('load', () => {
       // Offline — show login
     });
   }
+});
+
+// Mobile sidebar toggle wiring
+const sidebarEl = document.querySelector('.sidebar');
+const sidebarOverlayEl = document.getElementById('sidebarOverlay');
+const mobileMenuBtnEl = document.getElementById('mobileMenuBtn');
+
+function openSidebar() {
+  if (!sidebarEl || !sidebarOverlayEl) return;
+  sidebarEl.classList.add('open');
+  sidebarOverlayEl.classList.add('show');
+  document.body.classList.add('no-scroll');
+}
+
+function closeSidebar() {
+  if (!sidebarEl || !sidebarOverlayEl) return;
+  sidebarEl.classList.remove('open');
+  sidebarOverlayEl.classList.remove('show');
+  document.body.classList.remove('no-scroll');
+}
+
+if (mobileMenuBtnEl) mobileMenuBtnEl.addEventListener('click', openSidebar);
+if (sidebarOverlayEl) sidebarOverlayEl.addEventListener('click', closeSidebar);
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', closeSidebar);
 });
 </script>
 </body>

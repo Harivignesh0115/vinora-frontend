@@ -230,21 +230,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API_BASE = (() => {
-  const origin = window.location.origin;
-  if (!origin || origin === 'null' || origin.startsWith('file:')) {
-    return 'http://localhost:5000/api';
-  }
-  try {
-    const url = new URL(origin);
-    const host = url.hostname;
-    const port = url.port;
-    if ((host === 'localhost' || host === '127.0.0.1') && port && port !== '5000') {
-      return `${url.protocol}//${host}:5000/api`;
-    }
-  } catch (e) {}
-  return `${origin}/api`;
-})();
+const API_BASE = "https://worker.vinora.workers.dev";
 let authToken = localStorage.getItem('mittel_reception_token');
 let activeTab = 'booked';
 let lastChangeAt = null;
@@ -552,7 +538,7 @@ function renderBooked(appts) {
             <td>${a.phone}</td>
             <td>${a.concern || 'General'}</td>
             <td>${badge(a.status)}</td>
-            <td><button class="btn-confirm" onclick="confirmBooking('${a._id}','${a.name}','${a.phone}','${a.email || ''}','${a.concern || 'General'}','${a.date}','${a.time}')">Confirm & Send WhatsApp</button></td>
+            <td><button class="btn-confirm" onclick="confirmBooking('${a.id}','${a.name}','${a.phone}','${a.email || ''}','${a.concern || 'General'}','${a.date}','${a.time}')">Confirm & Send WhatsApp</button></td>
           </tr>`).join('')}
       </tbody>
     </table>`;

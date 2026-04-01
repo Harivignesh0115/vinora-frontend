@@ -597,8 +597,8 @@
     <li><a href="#services">Services</a></li>
     <li><a href="#about">About</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="/reception">Reception</a></li>
-    <li><a href="/admin">Admin</a></li>
+    <li><a href="/reception/index.html">Reception</a></li>
+    <li><a href="/dashboard/index.html">Admin</a></li>
     <li><a href="#" class="nav-cta" id="bookNavBtn">Book Appointment</a></li>
   </ul>
 </nav>
@@ -904,21 +904,8 @@
 
 <script>
   // ─── API Configuration ───
-  const API_BASE = (() => {
-    const origin = window.location.origin;
-    if (!origin || origin === 'null' || origin.startsWith('file:')) {
-      return 'http://localhost:5000/api';
-    }
-    try {
-      const url = new URL(origin);
-      const host = url.hostname;
-      const port = url.port;
-      if ((host === 'localhost' || host === '127.0.0.1') && port && port !== '5000') {
-        return `${url.protocol}//${host}:5000/api`;
-      }
-    } catch (e) {}
-    return `${origin}/api`;
-  })();
+  // Use the Node backend so booking triggers the email service
+  const API_BASE = "http://localhost:5000/api";
 
   // ─── Chatbot State ───
   const chatState = {
