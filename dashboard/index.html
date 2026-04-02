@@ -494,23 +494,6 @@
   <style>
     /* Mobile layout fixes for the dashboard */
     @media (max-width: 900px) {
-      :root { --sidebar-w: 100%; }
-      .sidebar {
-        position: relative !important;
-        width: 100% !important;
-        height: auto !important;
-        left: 0 !important;
-        right: 0 !important;
-        top: 0 !important;
-        bottom: auto !important;
-        padding: 18px 0 12px;
-        box-shadow: none;
-      }
-      .sidebar-logo { padding: 0 16px 16px; }
-      .sidebar-section-title { padding: 12px 16px 6px; }
-      .nav-item { padding: 10px 16px; }
-      .sidebar-footer { padding: 16px; }
-
       .main {
         margin-left: 0 !important;
         padding: 20px 16px 28px;
@@ -525,9 +508,10 @@
 
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-      .filter-actions { margin-left: 0; }
-      .table-wrap { overflow-x: auto; }
+      .filter-actions { margin-left: 0; width: 100%; }
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       table { min-width: 720px; }
+      .page-header h1 { font-size: 22px; }
     }
 
     @media (max-width: 600px) {
@@ -737,7 +721,7 @@
 // ═════════════════════════════════════
 //           CONFIGURATION
 // ═════════════════════════════════════
-const API_BASE = "https://worker.vinora.workers.dev";
+const API_BASE = "/api";
 let authToken = localStorage.getItem('mittel_token');
 let adminData = JSON.parse(localStorage.getItem('mittel_admin') || '{}');
 let modalCallback = null;
@@ -793,8 +777,8 @@ async function handleLogin() {
       showLoginError('⚠️ Could not connect to server. Try demo credentials.');
     }
   } finally {
-    btn.disabled = false;
     btnText.textContent = '🔐 Sign In to Dashboard';
+    updateLoginBtnState();
   }
 }
 
@@ -837,12 +821,22 @@ async function initDashboard() {
   setInterval(updateTopbar, 60000);
 
   // Load data
-  await loadBookings();
-  lastChangeAt = new Date().toISOString();
-  startChangeWatcher();
+  try {
+    await loadBookings();
+    lastChangeAt = new Date().toISOString();
+    startChangeWatcher();
+  } catch (err) {
+    console.error('Failed to load bookings:', err);
+  }
 
   // Auto-refresh every 5 minutes and at midnight
-  setInterval(loadBookings, 5 * 60 * 1000);
+  setInterval(() => {
+    try {
+      loadBookings();
+    } catch (err) {
+      console.error('Failed to refresh bookings:', err);
+    }
+  }, 5 * 60 * 1000);
   scheduleMidnightRefresh();
 
   // Enter key on login
@@ -1189,6 +1183,31 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ═════════════════════════════════════
+//           LOGIN UX
+// ═════════════════════════════════════
+function updateLoginBtnState() {
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPassword');
+  const btn = document.getElementById('loginBtn');
+  if (!emailEl || !passEl || !btn) return;
+  const email = emailEl.value.trim();
+  const password = passEl.value.trim();
+  btn.disabled = !(email && password);
+}
+
+function setupLoginUX() {
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPassword');
+  if (!emailEl || !passEl) return;
+  if (adminData && adminData.email && !emailEl.value) {
+    emailEl.value = adminData.email;
+  }
+  emailEl.addEventListener('input', updateLoginBtnState);
+  passEl.addEventListener('input', updateLoginBtnState);
+  updateLoginBtnState();
+}
+
+// ═════════════════════════════════════
 //            AUTO INIT
 // ═════════════════════════════════════
 window.addEventListener('load', () => {
@@ -1197,15 +1216,19 @@ window.addEventListener('load', () => {
     fetch(`${API_BASE}/auth/verify`, {
       headers: { 'Authorization': `Bearer ${authToken}` }
     }).then(r => r.json()).then(data => {
-      if (data.success && data.admin && data.admin.role === 'admin') {
+      if (data.success) {
         initDashboard();
       } else {
         localStorage.removeItem('mittel_token');
+        localStorage.removeItem('mittel_admin');
       }
     }).catch(() => {
-      // Offline — show login
+      // If verification fails, clear stored data
+      localStorage.removeItem('mittel_token');
+      localStorage.removeItem('mittel_admin');
     });
   }
+  setupLoginUX();
 });
 
 // Mobile sidebar toggle wiring
